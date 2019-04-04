@@ -2,6 +2,7 @@ from rest_framework import serializers
 from rest_framework_jwt.settings import api_settings
 from django.contrib.auth.models import User
 
+from .models import Profile
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -29,6 +30,8 @@ class UserSerializerWithToken(serializers.ModelSerializer):
         if password is not None:
             instance.set_password(password)
         instance.save()
+        profile = Profile(user=instance)
+        profile.save()
         return instance
 
     class Meta:
