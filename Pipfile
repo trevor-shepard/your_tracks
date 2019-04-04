@@ -10,6 +10,8 @@ django = "*"
 djangorestframework = "*"
 djangorestframework-jwt = "*"
 django-cors-headers = "*"
+python-dotenv = "==0.8.2"
+requests = "==2.21.0"
 
 [requires]
 python_version = "3.7"
