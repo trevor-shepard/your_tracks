@@ -8,7 +8,7 @@ from datetime import timedelta, datetime
 
 from .utils import build_lastfm_api_call
 
-from core.models import User
+from core.models import User, Profile
 from .models import Track, Album, UserTrackHistory, Tag, Artist
 
 
@@ -85,12 +85,14 @@ def stats(request):
 
 
 # api/history
+# 
 def history(request):
   user = get_object_or_404(User, pk=request.user.pk)
 
   if request.method == "GET":
-    start = request.GET['start']
-    response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', start=start))
+    start = user.profile.last_track_pull.replace(tzinfo=timezone.utc).timestamp()
+    import pdb; pdb.set_trace()
+    response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', start=start.getTime()))
     response.raise_for_status()
     data = response.json()
     tracks = []

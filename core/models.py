@@ -9,5 +9,9 @@ from datetime import datetime
 
 
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        User,
+        primary_key=True,
+        on_delete=models.CASCADE
+    )
     last_track_pull = models.DateTimeField(default=pytz.timezone(timezone.get_default_timezone_name()).localize(datetime(2002, 3, 22)))
