@@ -12,37 +12,37 @@ class Group(models.Model):
     
 
 class Tag(models.Model):
-    name = models.CharField(max_length=40)
+    name = models.CharField(max_length=200)
     description = models.CharField(max_length=400, blank=True, null=True)
     wiki_url = models.CharField(max_length=100, blank=True, null=True)
 
 class Artist(models.Model):
-    name = models.CharField(max_length=40)
+    name = models.CharField(max_length=200)
     tag = models.ManyToManyField(
         Tag,
         related_name='tags',
         related_query_name='tags')
     mbid = models.CharField(
-        max_length=30,
+        max_length=100,
         primary_key=True,
         editable=False)
     def __str__(self):
         return f"{self.name}"
 
 class Album(models.Model):
-    name = models.CharField(max_length=50, blank=True, null=True)    
+    name = models.CharField(max_length=200, blank=True, null=True)    
     mbid = models.CharField(
-        max_length=30,
+        max_length=100,
         primary_key=True,
         editable=False)    
     def __str__(self):
         return f"{self.name}"
     
 class Track(models.Model):
-    name = models.CharField(max_length=50, blank=True, null=True)
+    name = models.CharField(max_length=200, blank=True, null=True)
     artist = models.ManyToManyField(Artist)
     mbid = models.CharField(
-        max_length=30,
+        max_length=200,
         primary_key=True,
         editable=False)
     
