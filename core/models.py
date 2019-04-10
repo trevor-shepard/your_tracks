@@ -11,6 +11,7 @@ from datetime import datetime
 class Profile(models.Model):
     user = models.OneToOneField(
         User,
+        related_name= "profile",
         primary_key=True,
         on_delete=models.CASCADE
     )

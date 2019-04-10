@@ -15,7 +15,10 @@ from rest_framework.views import APIView
 
 from .utils import build_lastfm_api_call
 
+
 from core.models import User, Profile
+from core.serializers import UserSerializer
+
 from .models import Track, Album, UserTrackHistory, Tag, Artist
 
 
@@ -31,10 +34,9 @@ def index(request):
 # api/top
 @api_view(['GET'])
 def stats(request):
-
-  import pdb; pdb.set_trace()
   user = get_object_or_404(User, pk=request.user.pk)
-
+  
+  
   def history(user):
     start = user.profile.last_track_pull.replace(tzinfo=timezone.utc).timestamp()
     response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', start=start))
@@ -71,10 +73,12 @@ def stats(request):
       else:
         listens[listen.track.name] = 1
     
-    response = sorted(listens.items(), key=lambda kv: kv[1])
-    response.reverse()
-    import pdb; pdb.set_trace()
-    return JsonResponse({'top_tracks': response})
+    track_data = sorted(listens.items(), key=lambda kv: kv[1])
+    track_data.reverse()
+    
+    return JsonResponse({
+      'track_data': track_data
+      })
 
 
 # api/history

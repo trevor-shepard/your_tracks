@@ -5,10 +5,12 @@ from django.contrib.auth.models import User
 from .models import Profile
 
 class UserSerializer(serializers.ModelSerializer):
+    # profile = serializers.PrimaryKeyRelatedField(many=False, read_only=True)
 
     class Meta:
         model = User
-        fields = ('username',)
+        fields = ('username', 'id', 'profile')
+        depth = 2
 
 
 class UserSerializerWithToken(serializers.ModelSerializer):
@@ -37,3 +39,10 @@ class UserSerializerWithToken(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('token', 'username', 'password')
+
+class ProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Profile
+        fields = '__all__'
+
