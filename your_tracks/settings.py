@@ -106,7 +106,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'your_tracks',
-        'USER': 'funkyflea',
+        'USER': os.getenv('DATABASE_USERNAME'),
         'PASSWORD': '',
         'HOST': 'localhost',
         'PORT': '5432',
