@@ -50,7 +50,6 @@ class Track(models.Model):
         return f"{self.name}"
     
 #TODO pull listening history after last time pulled
-#TODO
 class UserTrackHistory(models.Model):
     user = models.ForeignKey(
         User,

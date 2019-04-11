@@ -30,31 +30,30 @@ def index(request):
 
 
 # API Endpoints
-
 # api/top
 @api_view(['GET'])
 def stats(request):
   user = get_object_or_404(User, pk=request.user.pk)
   
-  
   def history(user):
-    start = user.profile.last_track_pull.replace(tzinfo=timezone.utc).timestamp()
-    response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', start=start))
+    start = int(user.profile.last_track_pull.replace(tzinfo=timezone.utc).timestamp())
+    
+    response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', _from=start))
     response.raise_for_status()
     data = response.json()
-    tracks = []
-    for track in data['recenttracks']['track']:
-      tracks.append(track)
-    page = 1
-    while page <= int(data['recenttracks']['@attr']['totalPages']):
-      response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', start=start, page=page))
-      response.raise_for_status()
-      data = response.json()
+    if isinstance(data['recenttracks']['track'], list):
+      tracks = []
       for track in data['recenttracks']['track']:
         tracks.append(track)
-      page += 1
-
-    record_user_history(user, tracks)
+      page = 1
+      while page <= int(data['recenttracks']['@attr']['totalPages']):
+        response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', _from=start, page=page))
+        response.raise_for_status()
+        data = response.json()
+        for track in data['recenttracks']['track']:
+          tracks.append(track)
+        page += 1
+      record_user_history(user, tracks)
   
   history(user)
   
@@ -94,6 +93,8 @@ def req_history(request):
     response.raise_for_status()
     data = response.json()
     tracks = []
+    
+
     for track in data['recenttracks']['track']:
       tracks.append(track)
     page = 1
@@ -120,6 +121,7 @@ def req_history(request):
 def record_user_history(user, tracks_data):
   for track_data in tracks_data:
     # check to see if mbid exists, use artist name if mbid does not exist as primary key
+    
     if track_data['artist']['mbid'] == "":
       if len(track_data['artist']['#text']) > 100:
           artist_mbid = track_data['artist']['#text'][:100]
@@ -195,8 +197,10 @@ def record_user_history(user, tracks_data):
     print(f"{user.username} listening to {track.name} saved")
   
   # update user's last track pull to prevent pulling duplicate histories
-  user.last_track_pull = timezone.now()
-  user.save()
+  user_profile = user.profile
+  user_profile.last_track_pull = timezone.now()
+  user_profile.save()
+
   print(f"user history updated at {timezone.now()}")
     
     
