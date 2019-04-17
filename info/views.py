@@ -19,7 +19,7 @@ from .utils import build_lastfm_api_call
 from core.models import User, Profile
 from core.serializers import UserSerializer
 
-from .models import Track, Album, UserTrackHistory, Tag, Artist
+from .models import Track, UserTrackHistory, Artist, UserTrackTally
 
 
 
@@ -117,63 +117,69 @@ def req_history(request):
 
 
 # Private Methods
+def find_artist(mbid, name):
+  # check to see if mbid exists, use artist name if mbid does not exist as primary key
+  if mbid == "":
+    if len(name) > 100:
+        artist_mbid = name[:100]
+    else:
+        artist_mbid=name
+    artist, artist_created = Artist.objects.get_or_create(
+      mbid=artist_mbid
+    )
+  else:
+    artist, artist_created = Artist.objects.get_or_create(
+      mbid=mbid
+    )
+
+  # if new artist created, save to database
+  if artist_created:
+    # if name is over 200 chars, truncate
+    if len(name) > 100:
+      artist.name = name[:100]
+    else:
+      artist.name = name
+    artist.save()
+    print(f'{artist.name} saved')
+
+def find_track(name, mbid, artist):
+  # check to see if mbid exists, use track name if mbid does not exist as primary key
+  if mbid == "":
+    if len(name) >200:
+      track_mbid = name[:200]
+    else:
+      track_mbid = name
+
+    track, track_created = Track.objects.get_or_create(
+      mbid=track_mbid
+    )
+  else:
+    track, track_created = Track.objects.get_or_create(
+      mbid=mbid
+    )
+
+  # if new track created, save to database
+  if track_created:
+
+    # if name is over 200 chars, truncate
+    if len(name) >200:
+      track.name = name[:200]
+      
+    else:
+      track.name = name
+    track.artist.add(artist)
+    track.save()
+    print(f"{track.name} saved")
+
 @transaction.atomic
 def record_user_history(user, tracks_data):
+
   for track_data in tracks_data:
-    # check to see if mbid exists, use artist name if mbid does not exist as primary key
-    
-    if track_data['artist']['mbid'] == "":
-      if len(track_data['artist']['#text']) > 100:
-          artist_mbid = track_data['artist']['#text'][:100]
-      else:
-          artist_mbid=track_data['artist']['#text']
-      artist, artist_created = Artist.objects.get_or_create(
-        mbid=artist_mbid
-      )
-    else:
-      artist, artist_created = Artist.objects.get_or_create(
-        mbid=track_data['artist']['mbid']
-      )
+    # find or create artist
+    artist = find_artist(track_data['artist']['mbid'], track_data['artist']['#text'])
 
-    # if new artist created, save to database
-    if artist_created:
-      artist.name = track_data['artist']['#text']
-
-      # if name is over 200 chars, truncate
-      if len(track_data['artist']['#text']) > 200:
-        artist.name = track_data['artist']['#text'][:200]
-      else:
-        artist.name = track_data['artist']['#text']
-      artist.save()
-      print(f'{artist.name} saved')
-
-    # check to see if mbid exists, use track name if mbid does not exist as primary key
-    if track_data['mbid'] == "":
-      if len(track_data['name']) >200:
-        track_mbid = track_data['name'][:200]
-      else:
-        track_mbid = track_mbid = track_data['name']
-
-      track, track_created = Track.objects.get_or_create(
-        mbid=track_mbid
-      )
-    else:
-      track, track_created = Track.objects.get_or_create(
-        mbid=track_data['mbid']
-      )
-
-    # if new track created, save to database
-    if track_created:
-
-      # if name is over 200 chars, truncate
-      if len(track_data['name']) >200:
-        track.name = track_data['name'][:200]
-        
-      else:
-        track.name = track_data['name']
-      track.artist.add(artist)
-      track.save()
-      print(f"{track.name} saved")
+    # find or create track
+    track = find_track(track_data['name'], mbid, artist)
 
     # create new listening event
     event = UserTrackHistory(
@@ -192,8 +198,15 @@ def record_user_history(user, tracks_data):
         event.played_on = datetime.now()
     else:
       event.played_on = datetime.now()
-
     event.save()
+
+    tally = UserTrackTally.objects.get_or_create(
+      user= user,
+      track= track
+    )
+    tally.count += 1
+    tally.save()
+
     print(f"{user.username} listening to {track.name} saved")
   
   # update user's last track pull to prevent pulling duplicate histories
