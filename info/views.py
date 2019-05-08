@@ -1,11 +1,13 @@
 import requests
+from datetime import timedelta, datetime
+from collections import OrderedDict
+
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone, dateformat
 from django.db import transaction
 
 
-from datetime import timedelta, datetime
 
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view
@@ -19,10 +21,9 @@ from .utils import build_lastfm_api_call
 from core.models import User, Profile
 from core.serializers import UserSerializer
 
-from .models import Track, UserTrackHistory, Artist, UserTrackTally
+from .models import Track, Artist, UserTrackTally
 
-
-
+from .serialzers import TrackTallySerializer
 
 # Render Methods
 def index(request): 
@@ -62,22 +63,13 @@ def stats(request):
     days = int(request.GET['days'])
     from_date = start = timezone.now() - timedelta(days=days)
 
-    history = UserTrackHistory.objects.filter(user=user).filter(played_on__gte=from_date)
+    history = UserTrackTally.objects.filter(user=user).filter(played_on__gte=from_date)
 
-    listens = {}
+    response_data = TrackTallySerializer(history, many=True).data
 
-    for listen in history:
-      if listen.track.name in listens:
-        listens[listen.track.name] = listens[listen.track.name] + 1
-      else:
-        listens[listen.track.name] = 1
+    sorted_response = sorted(response_data, key=lambda tally: tally['count'], reverse=True)
     
-    track_data = sorted(listens.items(), key=lambda kv: kv[1])
-    track_data.reverse()
-    
-    return JsonResponse({
-      'track_data': track_data
-      })
+    return Response(sorted_response)
 
 
 # api/history
@@ -88,7 +80,7 @@ def req_history(request):
 
   if request.method == "GET":
     start = user.profile.last_track_pull.replace(tzinfo=timezone.utc).timestamp()
-    import pdb; pdb.set_trace()
+
     response = requests.get(build_lastfm_api_call(user=request.user, method='user.getrecenttracks', limit='200', start=start.getTime()))
     response.raise_for_status()
     data = response.json()
@@ -111,14 +103,10 @@ def req_history(request):
       
     return JsonResponse(response.json())
 
-
-
-
-
-
 # Private Methods
 def find_artist(mbid, name):
   # check to see if mbid exists, use artist name if mbid does not exist as primary key
+  
   if mbid == "":
     if len(name) > 100:
         artist_mbid = name[:100]
@@ -141,6 +129,8 @@ def find_artist(mbid, name):
       artist.name = name
     artist.save()
     print(f'{artist.name} saved')
+  return artist
+
 
 def find_track(name, mbid, artist):
   # check to see if mbid exists, use track name if mbid does not exist as primary key
@@ -171,18 +161,21 @@ def find_track(name, mbid, artist):
     track.save()
     print(f"{track.name} saved")
 
+  return track
+
 @transaction.atomic
 def record_user_history(user, tracks_data):
 
   for track_data in tracks_data:
     # find or create artist
+
     artist = find_artist(track_data['artist']['mbid'], track_data['artist']['#text'])
 
     # find or create track
-    track = find_track(track_data['name'], mbid, artist)
+    track = find_track(track_data['name'], track_data["mbid"], artist)
 
     # create new listening event
-    event = UserTrackHistory(
+    tally, tally_created = UserTrackTally.objects.get_or_create(
       user= user,
       track= track
     )
@@ -193,17 +186,12 @@ def record_user_history(user, tracks_data):
         date = track_data['date']['#text']
         date = datetime.strptime(date, '%d %b %Y, %H:%M')
         date = timezone.make_aware(date)
-        event.played_on = date
+        tally.played_on = date
       else:
-        event.played_on = datetime.now()
+        tally.played_on = datetime.now()
     else:
-      event.played_on = datetime.now()
-    event.save()
-
-    tally = UserTrackTally.objects.get_or_create(
-      user= user,
-      track= track
-    )
+      tally.played_on = datetime.now()
+        
     tally.count += 1
     tally.save()
 
