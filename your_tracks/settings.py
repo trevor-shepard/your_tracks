@@ -156,3 +156,8 @@ STATIC_URL = '/static/'
 
 SOCIAL_AUTH_LASTFM_KEY = os.getenv('LASTFM_CLIENT_ID')
 SOCIAL_AUTH_LASTFM_SECRET = os.getenv('LASTFM_CLIENT_SECRET')
+
+
+# Configure Django App for Heroku.
+import django_heroku
+django_heroku.settings(locals())
